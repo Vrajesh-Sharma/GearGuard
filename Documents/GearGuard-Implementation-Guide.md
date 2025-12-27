@@ -984,3 +984,10 @@ touch app.py .env
 **Project Status:** Ready for Implementation
 
 Good luck with your hackathon! 🚀
+
+
+
+
+
+---
+Hardik was here
