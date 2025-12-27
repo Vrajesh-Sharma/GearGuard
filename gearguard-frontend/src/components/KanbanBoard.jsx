@@ -22,7 +22,7 @@ export default function KanbanBoard({ refreshTrigger }) {
   const [hoursSpent, setHoursSpent] = useState("");
   const [currentRequestId, setCurrentRequestId] = useState(null);
 
-  // Optional equipment filter (kept from your code)
+  // Optional equipment filter (used by Smart Button from Equipment page)
   const [equipmentFilter, setEquipmentFilter] = useState(null);
 
   // Reassign modal state
@@ -87,7 +87,7 @@ export default function KanbanBoard({ refreshTrigger }) {
     try {
       const updateData = { status: newStatus };
 
-      // If moving to scrap, mark equipment as scrapped
+      // Scrap logic: mark equipment as scrapped if request moved to scrap
       if (newStatus === "scrap") {
         const req = requests.find((r) => r.id === requestId);
         if (req?.equipment_id) {
@@ -105,7 +105,6 @@ export default function KanbanBoard({ refreshTrigger }) {
 
       if (error) throw error;
 
-      // Update local state
       setRequests((prev) =>
         prev.map((r) => (r.id === requestId ? { ...r, status: newStatus } : r))
       );
@@ -221,14 +220,9 @@ export default function KanbanBoard({ refreshTrigger }) {
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
-                            className={`${
-                              snapshot.isDragging ? "opacity-50" : ""
-                            }`}
+                            className={`${snapshot.isDragging ? "opacity-50" : ""}`}
                           >
-                            <RequestCard
-                              request={request}
-                              onReassign={openReassign}
-                            />
+                            <RequestCard request={request} onReassign={openReassign} />
                           </div>
                         )}
                       </Draggable>

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { toast } from "react-hot-toast";
 
-export default function RequestForm({ onClose, onSuccess }) {
+export default function RequestForm({ onClose, onSuccess, prefill }) {
   const [formData, setFormData] = useState({
     subject: "",
     description: "",
@@ -19,12 +19,31 @@ export default function RequestForm({ onClose, onSuccess }) {
   const [technicians, setTechnicians] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // ✅ Apply prefill from Calendar (or other callers)
+  // Example: { request_type: "preventive", scheduled_date: "2025-12-31" }
+  useEffect(() => {
+    if (!prefill) return;
+
+    setFormData((p) => ({
+      ...p,
+      ...(prefill.request_type ? { request_type: prefill.request_type } : {}),
+      ...(prefill.scheduled_date ? { scheduled_date: prefill.scheduled_date } : {}),
+    }));
+  }, [prefill]);
+
   // Load equipment on mount
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("equipment")
         .select("id,name,serial_number,category,team_id,default_technician_id");
+
+      if (error) {
+        console.error(error);
+        toast.error("Failed to load equipment");
+        return;
+      }
+
       setEquipment(data || []);
     })();
   }, []);
@@ -38,11 +57,13 @@ export default function RequestForm({ onClose, onSuccess }) {
 
     try {
       // Fetch equipment details
-      const { data: eq } = await supabase
+      const { data: eq, error } = await supabase
         .from("equipment")
         .select("team_id,category,default_technician_id")
         .eq("id", equipmentId)
         .single();
+
+      if (error) throw error;
 
       if (eq) {
         // Auto-fill team and technician
@@ -55,17 +76,36 @@ export default function RequestForm({ onClose, onSuccess }) {
 
         // Fetch team members to filter technician dropdown
         if (eq.team_id) {
-          const { data: members } = await supabase
+          const { data: members, error: mErr } = await supabase
             .from("users")
             .select("id,full_name,avatar_url")
             .eq("team_id", eq.team_id);
+
+          if (mErr) throw mErr;
           setTechnicians(members || []);
+        } else {
+          setTechnicians([]);
         }
       }
     } catch (err) {
       console.error("Auto-fill failed:", err);
       toast.error("Failed to auto-fill team");
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      subject: "",
+      description: "",
+      equipment_id: "",
+      category: "",
+      team_id: "",
+      assigned_technician_id: "",
+      request_type: prefill?.request_type || "corrective",
+      priority: "medium",
+      scheduled_date: prefill?.scheduled_date || "",
+    });
+    setTechnicians([]);
   };
 
   const handleSubmit = async (e) => {
@@ -80,43 +120,39 @@ export default function RequestForm({ onClose, onSuccess }) {
         return;
       }
 
-      // Create request
+      // If Preventive, scheduled date should be present (recommended for requirement)
+      if (formData.request_type === "preventive" && !formData.scheduled_date) {
+        toast.error("Scheduled Date is required for Preventive requests");
+        setLoading(false);
+        return;
+      }
+
+      const payload = {
+        subject: formData.subject,
+        description: formData.description,
+        equipment_id: formData.equipment_id,
+        category: formData.category,
+        team_id: formData.team_id,
+        assigned_technician_id: formData.assigned_technician_id || null,
+        request_type: formData.request_type,
+        priority: formData.priority,
+        scheduled_date: formData.scheduled_date || null,
+        status: "new",
+        created_at: new Date().toISOString(),
+      };
+
       const { data, error } = await supabase
         .from("maintenance_requests")
-        .insert([
-          {
-            subject: formData.subject,
-            description: formData.description,
-            equipment_id: formData.equipment_id,
-            category: formData.category,
-            team_id: formData.team_id,
-            assigned_technician_id: formData.assigned_technician_id || null,
-            request_type: formData.request_type,
-            priority: formData.priority,
-            scheduled_date: formData.scheduled_date || null,
-            status: "new",
-            created_at: new Date().toISOString(),
-          },
-        ])
+        .insert([payload])
         .select()
         .single();
 
       if (error) throw error;
 
       toast.success("Request created successfully!");
-      setFormData({
-        subject: "",
-        description: "",
-        equipment_id: "",
-        category: "",
-        team_id: "",
-        assigned_technician_id: "",
-        request_type: "corrective",
-        priority: "medium",
-        scheduled_date: "",
-      });
-
-      onSuccess?.();
+      resetForm();
+      onSuccess?.(data);
+      onClose?.();
     } catch (error) {
       console.error("Submit error:", error);
       toast.error(error.message || "Failed to create request");
@@ -174,7 +210,9 @@ export default function RequestForm({ onClose, onSuccess }) {
 
           {/* Team (Auto-filled) */}
           <div>
-            <label className="block text-sm font-medium mb-1">Team (Auto-filled)</label>
+            <label className="block text-sm font-medium mb-1">
+              Team (Auto-filled)
+            </label>
             <input
               type="text"
               disabled
@@ -209,7 +247,7 @@ export default function RequestForm({ onClose, onSuccess }) {
             </select>
           </div>
 
-          {/* Request Type */}
+          {/* Request Type + Priority */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Type</label>
@@ -244,7 +282,9 @@ export default function RequestForm({ onClose, onSuccess }) {
           {/* Scheduled Date (for preventive) */}
           {formData.request_type === "preventive" && (
             <div>
-              <label className="block text-sm font-medium mb-1">Scheduled Date</label>
+              <label className="block text-sm font-medium mb-1">
+                Scheduled Date
+              </label>
               <input
                 type="date"
                 value={formData.scheduled_date}

@@ -9,7 +9,7 @@ export default function EquipmentList({ onSelectEquipment }) {
 
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState("");
-  const [filterOwner, setFilterOwner] = useState(""); // ✅ Employee/Owner filter
+  const [filterOwner, setFilterOwner] = useState("");
 
   const [requestCounts, setRequestCounts] = useState({});
   const navigate = useNavigate();
@@ -22,7 +22,6 @@ export default function EquipmentList({ onSelectEquipment }) {
   const fetchEquipment = async () => {
     setLoading(true);
     try {
-      // ✅ Include owner (employee) details from users table
       const { data, error } = await supabase
         .from("equipment")
         .select(
@@ -61,15 +60,11 @@ export default function EquipmentList({ onSelectEquipment }) {
     }
   };
 
-  // Filter equipment
   const filtered = equipment.filter((eq) => {
     const matchSearch =
       eq.name.toLowerCase().includes(search.toLowerCase()) ||
       eq.serial_number.toLowerCase().includes(search.toLowerCase());
-
     const matchDept = !filterDept || eq.department === filterDept;
-
-    // ✅ Employee/Owner filter (By Employee requirement)
     const matchOwner =
       !filterOwner || (eq.owner_employee_id && eq.owner_employee_id === filterOwner);
 
@@ -78,7 +73,6 @@ export default function EquipmentList({ onSelectEquipment }) {
 
   const departments = [...new Set(equipment.map((e) => e.department).filter(Boolean))];
 
-  // ✅ Build owner list from loaded equipment
   const ownersMap = new Map();
   equipment.forEach((e) => {
     if (e.owner?.id) ownersMap.set(e.owner.id, e.owner);
@@ -95,7 +89,6 @@ export default function EquipmentList({ onSelectEquipment }) {
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">Equipment Management</h1>
 
-      {/* Filters */}
       <div className="bg-white rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
@@ -123,7 +116,6 @@ export default function EquipmentList({ onSelectEquipment }) {
             </select>
           </div>
 
-          {/* ✅ By Employee filter */}
           <div>
             <select
               value={filterOwner}
@@ -157,20 +149,17 @@ export default function EquipmentList({ onSelectEquipment }) {
         </div>
       </div>
 
-      {/* Equipment Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map((eq) => (
           <div
             key={eq.id}
             className="border border-gray-200 rounded-lg p-5 hover:shadow-lg transition bg-white"
           >
-            {/* Header */}
             <div className="mb-3">
               <h3 className="text-lg font-bold text-gray-900">{eq.name}</h3>
               <p className="text-sm text-gray-600">SN: {eq.serial_number}</p>
             </div>
 
-            {/* Details Grid */}
             <div className="space-y-2 mb-4 text-sm">
               <div>
                 <span className="font-medium text-gray-700">Category:</span>
@@ -182,7 +171,6 @@ export default function EquipmentList({ onSelectEquipment }) {
                 <span className="ml-2 text-gray-600">{eq.department}</span>
               </div>
 
-              {/* ✅ Purchase Date */}
               {eq.purchase_date && (
                 <div>
                   <span className="font-medium text-gray-700">Purchase Date:</span>
@@ -197,7 +185,6 @@ export default function EquipmentList({ onSelectEquipment }) {
                 <span className="ml-2 text-gray-600">{eq.location}</span>
               </div>
 
-              {/* ✅ Owner/Employee */}
               <div>
                 <span className="font-medium text-gray-700">Employee:</span>
                 <span className="ml-2 text-gray-600">
@@ -219,14 +206,12 @@ export default function EquipmentList({ onSelectEquipment }) {
               </div>
             </div>
 
-            {/* Warranty */}
             {eq.warranty_expiry && (
               <p className="text-xs text-gray-500 mb-4">
                 Warranty until: {new Date(eq.warranty_expiry).toLocaleDateString()}
               </p>
             )}
 
-            {/* Smart Maintenance Button */}
             <button
               onClick={() => {
                 navigate("/maintenance", { state: { equipmentFilter: eq.id } });

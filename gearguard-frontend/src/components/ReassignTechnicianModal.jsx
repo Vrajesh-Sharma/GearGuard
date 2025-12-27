@@ -46,11 +46,7 @@ export default function ReassignTechnicianModal({
     fetchTechs();
   }, [isOpen, teamId]);
 
-  const techOptions = useMemo(() => {
-    // If you want only technicians (not managers), uncomment filter:
-    // return technicians.filter(t => t.role === "technician");
-    return technicians;
-  }, [technicians]);
+  const techOptions = useMemo(() => technicians, [technicians]);
 
   const handleSave = async () => {
     if (!request?.id) return;
