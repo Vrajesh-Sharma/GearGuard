@@ -6,27 +6,34 @@ import { toast } from "react-hot-toast";
 export default function EquipmentList({ onSelectEquipment }) {
   const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState("");
+  const [filterOwner, setFilterOwner] = useState(""); // ✅ Employee/Owner filter
+
   const [requestCounts, setRequestCounts] = useState({});
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchEquipment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchEquipment = async () => {
     setLoading(true);
     try {
+      // ✅ Include owner (employee) details from users table
       const { data, error } = await supabase
         .from("equipment")
-        .select("*")
+        .select(
+          `*,
+           owner:owner_employee_id(id,full_name,email)`
+        )
         .order("name");
 
       if (error) throw error;
       setEquipment(data || []);
 
-      // Fetch request counts for each equipment
       await fetchRequestCounts(data || []);
     } catch (error) {
       console.error("Fetch error:", error);
@@ -59,11 +66,26 @@ export default function EquipmentList({ onSelectEquipment }) {
     const matchSearch =
       eq.name.toLowerCase().includes(search.toLowerCase()) ||
       eq.serial_number.toLowerCase().includes(search.toLowerCase());
+
     const matchDept = !filterDept || eq.department === filterDept;
-    return matchSearch && matchDept;
+
+    // ✅ Employee/Owner filter (By Employee requirement)
+    const matchOwner =
+      !filterOwner || (eq.owner_employee_id && eq.owner_employee_id === filterOwner);
+
+    return matchSearch && matchDept && matchOwner;
   });
 
-  const departments = [...new Set(equipment.map((e) => e.department))];
+  const departments = [...new Set(equipment.map((e) => e.department).filter(Boolean))];
+
+  // ✅ Build owner list from loaded equipment
+  const ownersMap = new Map();
+  equipment.forEach((e) => {
+    if (e.owner?.id) ownersMap.set(e.owner.id, e.owner);
+  });
+  const owners = Array.from(ownersMap.values()).sort((a, b) =>
+    (a.full_name || "").localeCompare(b.full_name || "")
+  );
 
   if (loading) {
     return <div className="p-6 text-center">Loading equipment...</div>;
@@ -75,7 +97,7 @@ export default function EquipmentList({ onSelectEquipment }) {
 
       {/* Filters */}
       <div className="bg-white rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <input
               type="text"
@@ -101,10 +123,36 @@ export default function EquipmentList({ onSelectEquipment }) {
             </select>
           </div>
 
+          {/* ✅ By Employee filter */}
           <div>
-            <p className="text-sm text-gray-600">
-              {filtered.length} equipment found
-            </p>
+            <select
+              value={filterOwner}
+              onChange={(e) => setFilterOwner(e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2"
+            >
+              <option value="">All Employees</option>
+              {owners.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.full_name} {o.email ? `(${o.email})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm text-gray-600">{filtered.length} equipment found</p>
+            {(filterDept || filterOwner || search) && (
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setFilterDept("");
+                  setFilterOwner("");
+                }}
+                className="text-sm px-3 py-2 bg-gray-200 rounded hover:bg-gray-300"
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -128,14 +176,35 @@ export default function EquipmentList({ onSelectEquipment }) {
                 <span className="font-medium text-gray-700">Category:</span>
                 <span className="ml-2 text-gray-600">{eq.category}</span>
               </div>
+
               <div>
                 <span className="font-medium text-gray-700">Department:</span>
                 <span className="ml-2 text-gray-600">{eq.department}</span>
               </div>
+
+              {/* ✅ Purchase Date */}
+              {eq.purchase_date && (
+                <div>
+                  <span className="font-medium text-gray-700">Purchase Date:</span>
+                  <span className="ml-2 text-gray-600">
+                    {new Date(eq.purchase_date).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+
               <div>
                 <span className="font-medium text-gray-700">Location:</span>
                 <span className="ml-2 text-gray-600">{eq.location}</span>
               </div>
+
+              {/* ✅ Owner/Employee */}
+              <div>
+                <span className="font-medium text-gray-700">Employee:</span>
+                <span className="ml-2 text-gray-600">
+                  {eq.owner?.full_name || "Unassigned"}
+                </span>
+              </div>
+
               <div>
                 <span className="font-medium text-gray-700">Status:</span>
                 <span
