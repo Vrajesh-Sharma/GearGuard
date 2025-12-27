@@ -13,6 +13,13 @@ const COLUMNS = {
   scrap: { title: "Scrap", color: "red" },
 };
 
+const dotClass = {
+  blue: "bg-blue-500",
+  yellow: "bg-yellow-500",
+  green: "bg-emerald-500",
+  red: "bg-red-500",
+};
+
 export default function KanbanBoard({ refreshTrigger }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -163,7 +170,20 @@ export default function KanbanBoard({ refreshTrigger }) {
   };
 
   if (loading) {
-    return <div className="p-6 text-center">Loading Kanban...</div>;
+    return (
+      <div className="p-6">
+        <div className="rounded-3xl border border-white/10 bg-white/10 backdrop-blur-xl p-8 shadow-glass">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 w-72 bg-white/15 rounded" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-[520px] rounded-3xl bg-white/10 border border-white/10" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Group requests by status
@@ -174,12 +194,25 @@ export default function KanbanBoard({ refreshTrigger }) {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Maintenance Kanban</h1>
+      {/* Header */}
+      <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs text-white/80 backdrop-blur">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            Technician Workspace
+          </div>
+          <h1 className="mt-3 text-3xl md:text-4xl font-extrabold tracking-tight text-white">
+            Maintenance <span className="text-white/70">Kanban</span>
+          </h1>
+          <p className="mt-1 text-sm text-white/70">
+            Drag requests across stages, reassign technicians, and log hours on completion.
+          </p>
+        </div>
+
         {equipmentFilter && (
           <button
             onClick={() => setEquipmentFilter(null)}
-            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            className="rounded-xl bg-white text-slate-900 px-4 py-2 text-sm font-semibold shadow-soft hover:shadow-glass transition"
           >
             Clear Filter
           </button>
@@ -194,42 +227,56 @@ export default function KanbanBoard({ refreshTrigger }) {
                 <div
                   {...provided.droppableProps}
                   ref={provided.innerRef}
-                  className={`bg-gray-50 rounded-lg p-4 min-h-96 border-2 border-transparent ${
-                    snapshot.isDraggingOver ? "border-blue-400 bg-blue-50" : ""
+                  className={`relative overflow-hidden rounded-3xl border backdrop-blur-xl shadow-glass transition ${
+                    snapshot.isDraggingOver
+                      ? "border-blue-500/40 bg-blue-500/10"
+                      : "border-white/10 bg-white/10"
                   }`}
                 >
-                  <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-                    <span
-                      className={`w-3 h-3 rounded-full bg-${column.color}-500`}
-                    />
-                    {column.title}
-                    <span className="ml-auto bg-gray-200 px-2 py-1 rounded text-sm">
-                      {grouped[statusKey].length}
-                    </span>
-                  </h2>
+                  {/* Column header */}
+                  <div className="sticky top-0 z-10 px-4 py-4 border-b border-white/10 bg-white/10 backdrop-blur-xl">
+                    <div className="flex items-center gap-3">
+                      <span className={`h-3 w-3 rounded-full ${dotClass[column.color]}`} />
+                      <div className="text-white font-bold">{column.title}</div>
+                      <div className="ml-auto rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-white/80">
+                        {grouped[statusKey].length}
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs text-white/50">
+                      {statusKey === "new" && "Newly created requests waiting to be taken."}
+                      {statusKey === "in_progress" && "Work currently being handled."}
+                      {statusKey === "repaired" && "Completed jobs with logged hours."}
+                      {statusKey === "scrap" && "Marked unusable; equipment gets scrapped."}
+                    </div>
+                  </div>
 
-                  <div className="space-y-3">
+                  {/* Cards */}
+                  <div className="p-4 space-y-3 min-h-[520px]">
                     {grouped[statusKey].map((request, index) => (
-                      <Draggable
-                        key={request.id}
-                        draggableId={request.id}
-                        index={index}
-                      >
-                        {(provided, snapshot) => (
+                      <Draggable key={request.id} draggableId={request.id} index={index}>
+                        {(provided, snap) => (
                           <div
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
-                            className={`${snapshot.isDragging ? "opacity-50" : ""}`}
+                            className={`transition ${
+                              snap.isDragging ? "rotate-[0.4deg] scale-[1.02]" : ""
+                            }`}
                           >
                             <RequestCard request={request} onReassign={openReassign} />
                           </div>
                         )}
                       </Draggable>
                     ))}
-                  </div>
 
-                  {provided.placeholder}
+                    {provided.placeholder}
+
+                    {grouped[statusKey].length === 0 && (
+                      <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-white/60">
+                        Drop cards here
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </Droppable>
@@ -247,31 +294,45 @@ export default function KanbanBoard({ refreshTrigger }) {
 
       {/* Hours Modal */}
       {hoursModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm">
-            <h3 className="text-lg font-bold mb-4">Hours Spent on Repair</h3>
-            <input
-              type="number"
-              step="0.5"
-              min="0"
-              value={hoursSpent}
-              onChange={(e) => setHoursSpent(e.target.value)}
-              placeholder="Enter hours..."
-              className="w-full border border-gray-300 rounded px-3 py-2 mb-4"
-            />
-            <div className="flex gap-3">
-              <button
-                onClick={() => setHoursModal(false)}
-                className="flex-1 border border-gray-300 rounded px-4 py-2 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmRepaired}
-                className="flex-1 bg-green-600 text-white rounded px-4 py-2 hover:bg-green-700"
-              >
-                Confirm
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
+          <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-white/10 backdrop-blur-xl shadow-glass overflow-hidden">
+            <div className="p-5 border-b border-white/10">
+              <div className="text-white font-extrabold text-lg">Log Repair Hours</div>
+              <div className="text-white/60 text-sm mt-1">
+                Enter time spent to move request to <span className="text-white/80 font-semibold">Repaired</span>.
+              </div>
+            </div>
+
+            <div className="p-5">
+              <label className="text-xs text-white/70 font-semibold">Hours Spent</label>
+              <input
+                type="number"
+                step="0.5"
+                min="0"
+                value={hoursSpent}
+                onChange={(e) => setHoursSpent(e.target.value)}
+                placeholder="e.g., 1.5"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 backdrop-blur px-4 py-3 text-white placeholder:text-white/40 outline-none focus:ring-2 focus:ring-emerald-500/40"
+              />
+
+              <div className="mt-4 flex gap-3">
+                <button
+                  onClick={() => setHoursModal(false)}
+                  className="flex-1 rounded-2xl border border-white/10 bg-white/5 text-white/80 px-4 py-3 font-semibold hover:bg-white/10 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRepaired}
+                  className="flex-1 rounded-2xl bg-emerald-500 text-slate-950 px-4 py-3 font-extrabold hover:bg-emerald-400 transition"
+                >
+                  Confirm
+                </button>
+              </div>
+
+              <div className="mt-3 text-[11px] text-white/45">
+                Tip: This is required by workflow to complete a repair.
+              </div>
             </div>
           </div>
         </div>

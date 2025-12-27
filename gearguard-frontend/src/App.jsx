@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Routes, Route, Link, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import Dashboard from "./components/Dashboard";
-import EquipmentList from "./components/EquipmentList";
-import KanbanBoard from "./components/KanbanBoard";
-import CalendarView from "./components/CalendarView";
-import RequestForm from "./components/RequestForm";
+import Dashboard from "./pages/Dashboard";
+import EquipmentList from "./pages/EquipmentList";
+import KanbanBoard from "./pages/KanbanBoard";
+import CalendarView from "./pages/CalendarView";
+import RequestForm from "./pages/RequestForm";
 
 export default function App() {
   const [showRequestForm, setShowRequestForm] = useState(false);
