@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import toast from "react-hot-toast";
-import Button from "../common/Button";
-import Modal from "../common/Modal";
-import { listRequests } from "../../app/db";
-import { isoDate } from "../../utils/dates";
+import Button from "./common/Button";
+import Modal from "./common/Modal";
+import { listRequests } from "../app/db";
+import { isoDate } from "../utils/dates";
 import RequestForm from "./RequestForm";
 
 export default function CalendarView() {
